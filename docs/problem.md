@@ -69,3 +69,7 @@
           \        |        /
              [ Central Redis ]
 ```
+
+---
+
+PostgreSQL/DB server integration for Extra Memory / requests with longer TTL
