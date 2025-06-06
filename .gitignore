@@ -4,3 +4,7 @@ logs/
 proxy_temp/
 scgi_temp/
 uwsgi_temp/
+/luarocks
+/lua
+/lua_modules
+/.luarocks
