@@ -15,7 +15,6 @@ _M.default_config = {
   identifier_fn = function() return ngx.var.remote_addr end
 }
 
--- Initialize with custom configuration
 function _M.init(custom_config)
   local config = {}
   for k, v in pairs(_M.default_config) do
@@ -24,7 +23,6 @@ function _M.init(custom_config)
   _M.config = config
 end
 
--- Rate limiting logic
 function _M.enforce()
   local config = _M.config or _M.default_config
 

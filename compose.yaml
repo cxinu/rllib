@@ -7,6 +7,29 @@ services:
     labels:
       - monitor=true
 
+  db:
+    image: postgres:15
+    container_name: pg_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres:/docker-entrypoint-initdb.d 
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
@@ -33,3 +56,7 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+
+volumes:
+  pgdata:
+  redis-data:
