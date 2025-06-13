@@ -1,13 +1,13 @@
 services:
-  openresty-app:
+  resty-app:
     build: .
-    container_name: openresty-app
+    container_name: resty-app
     ports:
       - "8080:8080"
     labels:
       - monitor=true
 
-  db:
+  mirror:
     image: postgres:15
     container_name: pg_dev
     restart: unless-stopped
@@ -40,22 +40,6 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
 
 volumes:
   pgdata:
