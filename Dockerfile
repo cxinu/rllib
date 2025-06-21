@@ -16,9 +16,9 @@ RUN luarocks --lua-version=5.1 install pgmoon
 RUN mkdir -p /app/logs
 WORKDIR /app
 
-COPY conf /app/conf
-COPY lualib /app/lualib
+COPY examples /app
+COPY lib /app/lib
 
 EXPOSE 8080
 
-CMD ["openresty", "-p", "/app", "-c", "conf/nginx.conf", "-g", "daemon off;"]
+CMD ["openresty", "-p", "/app", "-c", "nginx.conf", "-g", "daemon off;"]
