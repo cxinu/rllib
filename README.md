@@ -1,7 +1,7 @@
 # rllib
 
-[](https://www.google.com/search?q=https://luarocks.org/modules/cxinu/rllib)
-[](https://opensource.org/licenses/MIT)
+[![LuaRocks](https://img.shields.io/badge/LuaRocks-rllib-purple)](https://luarocks.org/modules/cxinu/rllib)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A high-performance, distributed rate-limiting library for OpenResty using Redis.
 
