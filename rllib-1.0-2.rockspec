@@ -1,7 +1,5 @@
-rockspec_format = "3.0"
-
 package = "rllib"
-version = "1.0-1"
+version = "1.0-2"
 source = {
   url = "git+ssh://git@github.com/cxinu/rllib.git",
 }
@@ -20,9 +18,9 @@ throttling and traffic control across horizontally scaled environments.
   license = "MIT",
 }
 
-dependencies = {}
-build_dependencies = {}
-test_dependencies = {}
+dependencies = {
+  "lua >= 5.1, < 5.5",
+}
 
 build = {
   type = "builtin",
