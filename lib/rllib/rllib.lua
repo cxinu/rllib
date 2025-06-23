@@ -1,8 +1,6 @@
 local _M = { _VERSION = "0.1.0" }
 
 local redis = require "resty.redis"
--- local cjson = require "cjson"
--- local pgmoon = require "pgmoon"
 
 local DEFAULT_CONFIG = {
   redis_host = "redis",
@@ -17,7 +15,7 @@ local DEFAULT_CONFIG = {
 
   key_prefix = "rate_limit:",
   default_identifier_fn = function()
-    return ngx.var.remote_addr or "unknown_client"
+    return ngx.var.http_x_forwarded_for or ngx.var.remote_addr
   end,
 
   local_cache_enabled = false,

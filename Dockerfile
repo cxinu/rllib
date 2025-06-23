@@ -11,8 +11,6 @@ RUN apt-get update && apt-get install -y \
     luarocks \
     && rm -rf /var/lib/apt/lists/*
 
-RUN luarocks --lua-version=5.1 install pgmoon
-
 RUN mkdir -p /app/logs
 WORKDIR /app
 
