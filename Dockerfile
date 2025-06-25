@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
     luarocks \
     && rm -rf /var/lib/apt/lists/*
 
+RUN luarocks install kong-redis-cluster
+
 RUN mkdir -p /app/logs
 WORKDIR /app
 

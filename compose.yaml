@@ -9,20 +9,6 @@ services:
     labels:
       - monitor=true
 
-  mirror:
-    image: postgres:15
-    container_name: pg_dev
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: mydb
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./postgres:/docker-entrypoint-initdb.d 
-
   redis:
     image: redis:latest
     container_name: redis
@@ -31,6 +17,28 @@ services:
     volumes:
       - redis-data:/data
     command: ["redis-server", "--appendonly", "yes"]
+
+  redis-cluster:
+    image: grokzen/redis-cluster:7.0.11
+    container_name: redis-cluster
+    environment:
+      - IP=0.0.0.0
+      - REDIS_CLUSTER_IP=redis-cluster
+      - REDIS_CLUSTER_PORT=7000
+      - REDIS_CLUSTER_REPLICAS=1
+      - REDIS_CLUSTER_NODES=6
+      - REDIS_CLUSTER_ANNOUNCE_IP=127.0.0.1
+      - STANDALONE=false
+      - CLUSTER_ONLY=true
+    ports:
+      - "7000-7005:7000-7005"
+    volumes:
+      - redis-cluster-data:/redis-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -44,5 +52,5 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
 
 volumes:
-  pgdata:
   redis-data:
+  redis-cluster-data:

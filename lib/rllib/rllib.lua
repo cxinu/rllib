@@ -1,23 +1,40 @@
-local _M = { _VERSION = "0.1.0" }
+local _M = { _VERSION = "1.0.2" }
 
 local redis = require "resty.redis"
+local cluster = require "kong-redis-cluster"
 
 local DEFAULT_CONFIG = {
+  -- Standalone Redis settings
   redis_host = "redis",
   redis_port = 6379,
-  redis_timeout = 1000, -- ms
-  redis_pool_size = 100,
   password = nil, -- Redis auth
   db = nil, -- specific Redis DB
 
+  -- Redis common settings
+  redis_timeout = 1000, -- ms
+  redis_pool_size = 100,
+  redis_keepalive_timeout = 60000, -- ms (for standalone Redis only)
+
+  -- Cluster support
+  test_redis_cluster = false,
+  use_redis_cluster = false,
+  redis_cluster_nodes = {
+    { ip = "redis-cluster", port = 7000 },
+    { ip = "redis-cluster", port = 7001 },
+    { ip = "redis-cluster", port = 7002 },
+  },
+
+  -- Rate limiting
   default_limit = 10, -- requests per window
   default_window = 60, -- seconds
-
   key_prefix = "rate_limit:",
+
+  -- Identifier function
   default_identifier_fn = function()
     return ngx.var.http_x_forwarded_for or ngx.var.remote_addr
   end,
 
+  -- Local cache
   local_cache_enabled = false,
   local_cache_name = nil,
 }
@@ -25,47 +42,65 @@ local DEFAULT_CONFIG = {
 local module_config = {}
 
 local function get_redis_conn()
-  local red, err = redis:new()
-  if not red then
-    ngx.log(ngx.ERR, "failed to instantiate redis: ", (err or "unknown error"))
-    return nil, "REDIS_INSTANCE_ERROR"
-  end
+  if module_config.use_redis_cluster then
+    local red, err = cluster:new {
+      name = "rate_limit_cluster",
+      serv_list = module_config.redis_cluster_nodes,
+      timeout = module_config.redis_timeout,
+      keepalive_timeout = module_config.redis_keepalive_timeout or 60000,
+      keepalive_cons = module_config.redis_pool_size or 100,
+      max_redirections = 5,
+      read_slave = false,
+    }
 
-  red:set_timeouts(module_config.redis_timeout, module_config.redis_timeout, module_config.redis_timeout)
-
-  local ok, conn_err = red:connect(module_config.redis_host, module_config.redis_port)
-  if not ok then
-    ngx.log(ngx.ERR, "failed to connect to redis: ", conn_err)
-    return nil, "REDIS_CONNECTION_ERROR: " .. conn_err
-  end
-
-  -- Authenticate if password is provided
-  if module_config.password then
-    local auth_ok, auth_err = red:auth(module_config.password)
-    if not auth_ok then
-      red:close()
-      ngx.log(ngx.ERR, "redis authentication failed: ", auth_err)
-      return nil, "REDIS_AUTH_ERROR: " .. auth_err
+    if not red then
+      ngx.log(ngx.ERR, "Failed to connect to Redis Cluster: ", err)
+      return nil, "REDIS_CLUSTER_CONNECTION_ERROR: " .. err
     end
-  end
 
-  -- Select DB if provided
-  if module_config.db then
-    local select_ok, select_err = red:select(module_config.db)
-    if not select_ok then
-      red:close()
-      ngx.log(ngx.ERR, "redis DB selection failed: ", select_err)
-      return nil, "REDIS_DB_ERROR: " .. select_err
+    return red, nil
+  else
+    local red, err = redis:new()
+    if not red then
+      ngx.log(ngx.ERR, "failed to instantiate redis: ", (err or "unknown error"))
+      return nil, "REDIS_INSTANCE_ERROR"
     end
-  end
 
-  return red, nil
+    red:set_timeouts(module_config.redis_timeout, module_config.redis_timeout, module_config.redis_timeout)
+
+    local ok, conn_err = red:connect(module_config.redis_host, module_config.redis_port)
+    if not ok then
+      ngx.log(ngx.ERR, "failed to connect to redis: ", conn_err)
+      return nil, "REDIS_CONNECTION_ERROR: " .. conn_err
+    end
+
+    if module_config.password then
+      local auth_ok, auth_err = red:auth(module_config.password)
+      if not auth_ok then
+        red:close()
+        ngx.log(ngx.ERR, "redis authentication failed: ", auth_err)
+        return nil, "REDIS_AUTH_ERROR: " .. auth_err
+      end
+    end
+
+    if module_config.db then
+      local select_ok, select_err = red:select(module_config.db)
+      if not select_ok then
+        red:close()
+        ngx.log(ngx.ERR, "redis DB selection failed: ", select_err)
+        return nil, "REDIS_DB_ERROR: " .. select_err
+      end
+    end
+
+    return red, nil
+  end
 end
 
 local function put_redis_conn(red)
-  if not red then
+  if not red or module_config.use_redis_cluster then
     return
   end
+
   local ok, err = red:set_keepalive(module_config.redis_keepalive_timeout, module_config.redis_pool_size)
   if not ok then
     ngx.log(ngx.ERR, "failed to set redis keepalive: ", err)
@@ -76,6 +111,36 @@ end
 function _M.init(custom_config)
   for k, v in pairs(DEFAULT_CONFIG) do
     module_config[k] = custom_config[k] or v
+  end
+
+  -- test clusters
+  if module_config.test_redis_cluster then
+    if not cluster then
+      ngx.log(ngx.ERR, "kong-redis-cluster module not installed or failed to load: ", cluster)
+    else
+      ngx.log(ngx.INFO, "Successfully loaded kong-redis-cluster module")
+
+      local red, err = cluster:new {
+        name = "rate_limit_cluster",
+        serv_list = module_config.redis_cluster_nodes,
+        timeout = module_config.redis_timeout,
+        keepalive_timeout = module_config.redis_keepalive_timeout or 60000,
+        keepalive_cons = module_config.redis_pool_size or 100,
+        max_redirections = 5,
+        read_slave = false,
+      }
+
+      if not red then
+        ngx.log(ngx.ERR, "Failed to connect to Redis Cluster: ", err)
+      else
+        local pong, ping_err = red:ping()
+        if not pong then
+          ngx.log(ngx.ERR, "Redis Cluster ping failed: ", ping_err)
+        else
+          ngx.log(ngx.INFO, "Redis Cluster is reachable: ", pong)
+        end
+      end
+    end
   end
 
   ngx.log(ngx.INFO, "Rate limit library initialized")
