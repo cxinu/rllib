@@ -5,17 +5,22 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     unzip \
+    fish \
+    ranger \
     libpq-dev \
     lua5.1 \
     liblua5.1-0-dev \
     luarocks \
     && rm -rf /var/lib/apt/lists/*
 
+RUN luarocks install kong-redis-cluster # use "luarocks install rllib" instead
+
 RUN mkdir -p /app/logs
 WORKDIR /app
 
 COPY examples /app
-COPY lib /app/lib
+# remove this in future
+COPY lib /app 
 
 EXPOSE 8080
 

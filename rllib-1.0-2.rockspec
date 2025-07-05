@@ -1,7 +1,8 @@
 package = "rllib"
-version = "1.0-2"
+version = "1.0.2-0"
 source = {
   url = "git+ssh://git@github.com/cxinu/rllib.git",
+  tag = "1.0.2",
 }
 description = {
   summary = "High-performance, Redis-backed rate limiter for OpenResty and NGINX.",
@@ -20,14 +21,12 @@ throttling and traffic control across horizontally scaled environments.
 
 dependencies = {
   "lua >= 5.1, < 5.5",
+  "kong-redis-cluster >= 1.5.5",
 }
 
 build = {
   type = "builtin",
   modules = {
-    ["rllib.rllib"] = "lib/rllib/rllib.lua",
-  },
-  copy_directories = {
-    "docs",
+    ["rllib"] = "lib/rllib.lua",
   },
 }
