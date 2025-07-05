@@ -1,12 +1,11 @@
 local rllib = require "rllib"
 
 -- Define specific limits for this endpoint
-local endpoint_limit = 10 -- requests
+local endpoint_limit = 10 -- requests per window
 local endpoint_window = 60 -- seconds
 
--- Get the client identifier (e.g., remote IP)
 local client_id = ngx.var.remote_addr
--- Or, if using an API key:
+-- if using an API key:
 -- local client_id = ngx.var.http_x_api_key or ngx.var.remote_addr
 
 local allowed, status_code = rllib.enforce_limit(client_id, endpoint_limit, endpoint_window)
@@ -14,7 +13,7 @@ local allowed, status_code = rllib.enforce_limit(client_id, endpoint_limit, endp
 if not allowed then
   ngx.header["X-RateLimit-Limit"] = endpoint_limit
   ngx.header["X-RateLimit-Remaining"] = 0
-  -- Attempt to get TTL for Retry-After header
+  -- TTL for Retry-After header
   local status_info, status_err = rllib.get_status(client_id, endpoint_window)
   if status_info and status_info.ttl and status_info.ttl > 0 then
     ngx.header["Retry-After"] = status_info.ttl
@@ -34,7 +33,6 @@ if not allowed then
   return ngx.exit(ngx.status)
 end
 
--- Request is allowed. Set X-RateLimit headers.
 local status_info, status_err = rllib.get_status(client_id, endpoint_window)
 if status_info then
   ngx.header["X-RateLimit-Limit"] = endpoint_limit
@@ -42,7 +40,6 @@ if status_info then
   if status_info.ttl and status_info.ttl > 0 then
     ngx.header["X-RateLimit-Reset"] = ngx.time() + status_info.ttl
   else
-    -- Fallback for reset if TTL is not available (e.g., new window start)
     ngx.header["X-RateLimit-Reset"] = ngx.time() + endpoint_window
   end
 else
